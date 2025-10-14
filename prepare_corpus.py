@@ -74,7 +74,7 @@ class CorpusBuilder:
     def _load_playlist_songs(self) -> dict:
         logger.info(f"Loading playlist songs from {self.data_config.playlist_songs_file}...")
         try:
-            df = pd.read_csv(self.data_config.playlist_songs_file)
+            df = pd.read_csv(self.data_config.playlist_songs_file, dtype=str)
             # Assuming columns are: special_gid, mixsongid
             # Group songs by playlist ID
             grouped = df.groupby('special_gid')['mixsongid'].apply(list)
