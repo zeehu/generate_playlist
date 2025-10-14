@@ -58,6 +58,14 @@ class PlaylistTIGERConfig:
     gradient_accumulation_steps: int = 1
     fp16: bool = True
 
+
+@dataclass
+class EvalConfig:
+    """Configuration for offline evaluation."""
+    # --- Path for offline metric scripts ---
+    local_metrics_path: str = "./local_metrics"
+
+
 @dataclass
 class SongRQKMeansConfig:
     """Configuration for Song RQ-KMeans training."""
