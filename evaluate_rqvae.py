@@ -16,6 +16,8 @@ from tqdm import tqdm
 import logging
 import random
 
+import csv
+
 # Adjust path to import from playlist_src
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -37,6 +39,7 @@ class Evaluator:
         self.device = torch.device(config.device if torch.cuda.is_available() else 'cpu')
         self.model = self._load_model()
         self.dataset = SongVectorDataset(self.rqvae_config.song_vector_file, self.rqvae_config.input_dim)
+        self.song_info_map = self._load_song_info()
 
     def _load_model(self) -> RQVAE:
         model_path = os.path.join(self.config.model_dir, "song_rqvae_best.pt")
@@ -57,6 +60,35 @@ class Evaluator:
         model.load_state_dict(torch.load(model_path, map_location=self.device))
         model.eval()
         return model
+
+    def _load_song_info(self) -> Dict[str, Dict[str, str]]:
+        song_info_file = self.config.data.song_info_file
+        if not os.path.exists(song_info_file):
+            logger.warning(f"Song info file not found at {song_info_file}. Song names will not be displayed.")
+            return {}
+
+        logger.info(f"Loading song info from {song_info_file}...")
+        mapping = {}
+        try:
+            with open(song_info_file, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                # Skip header if exists
+                first_row = next(reader)
+                if 'mixsongid' not in first_row[0]:
+                    self._process_song_info_row(first_row, mapping)
+                
+                for row in reader:
+                    self._process_song_info_row(row, mapping)
+            logger.info(f"Loaded info for {len(mapping)} songs.")
+        except Exception as e:
+            logger.error(f"Error reading song info file: {e}")
+            return {}
+        return mapping
+
+    def _process_song_info_row(self, row: List[str], mapping: Dict):
+        if len(row) >= 3:
+            song_id, song_name, singer_name = row[0], row[1], row[2]
+            mapping[song_id] = {"name": song_name, "singer": singer_name}
 
     def run_all_evaluations(self, sample_size: int = 10000, k_neighbors: int = 5):
         logger.info("--- Starting RQ-VAE Evaluation ---")
@@ -83,10 +115,8 @@ class Evaluator:
                 data = self.dataset[i]
                 original_vector = data['features'].unsqueeze(0).to(self.device)
                 
-                # Get the reconstructed vector
                 reconstructed_vector, _, _ = self.model(original_vector)
                 
-                # Calculate metrics
                 total_mse += F.mse_loss(reconstructed_vector, original_vector).item()
                 total_cosine_sim += F.cosine_similarity(reconstructed_vector, original_vector).item()
                 count += 1
@@ -109,18 +139,14 @@ class Evaluator:
     def evaluate_neighborhood(self, sample_size: int, k: int):
         logger.info(f"\n[2. Evaluating Neighborhood Preservation on a sample of {sample_size} songs]")
 
-        # Create a random subset of the data for feasible nearest neighbor search
         subset_indices = random.sample(range(len(self.dataset)), min(sample_size, len(self.dataset)))
-        
         original_vectors = torch.stack([self.dataset[i]['features'] for i in subset_indices]).to(self.device)
         song_ids = [self.dataset[i]['song_id'] for i in subset_indices]
 
-        # Get quantized vectors for the subset
         with torch.no_grad():
             encoded_vectors = self.model.encoder(original_vectors)
             quantized_vectors, _, _ = self.model.quantizer(encoded_vectors)
 
-        # Pick a few random songs from the subset to be our "seed" songs
         seed_indices = random.sample(range(len(subset_indices)), 3)
 
         print("\n" + "="*70)
@@ -129,18 +155,22 @@ class Evaluator:
         
         for seed_idx in seed_indices:
             seed_song_id = song_ids[seed_idx]
-            print(f"\n--- Analysis for Seed Song: {seed_song_id} ---")
+            seed_info = self.song_info_map.get(seed_song_id)
+            seed_display = f"{seed_info['name']} - {seed_info['singer']}" if seed_info else seed_song_id
+            print(f"\n--- Analysis for Seed Song: {seed_display} ---")
 
             # Find neighbors in original vector space
             seed_vector_orig = original_vectors[seed_idx].unsqueeze(0)
             sim_orig = F.cosine_similarity(seed_vector_orig, original_vectors)
-            top_k_orig_indices = torch.topk(sim_orig, k + 1).indices[1:] # +1 and [1:] to exclude the song itself
+            top_k_orig_indices = torch.topk(sim_orig, k + 1).indices[1:]
             
             print(f"  Top {k} Neighbors in ORIGINAL space:")
             for idx in top_k_orig_indices:
                 neighbor_id = song_ids[idx.item()]
+                info = self.song_info_map.get(neighbor_id)
+                display_name = f"{info['name']} - {info['singer']}" if info else neighbor_id
                 similarity = sim_orig[idx.item()].item()
-                print(f"    - {neighbor_id} (Similarity: {similarity:.4f})")
+                print(f"    - {display_name} (Similarity: {similarity:.4f})")
 
             # Find neighbors in quantized vector space
             seed_vector_quant = quantized_vectors[seed_idx].unsqueeze(0)
@@ -150,10 +180,11 @@ class Evaluator:
             print(f"\n  Top {k} Neighbors in QUANTIZED space:")
             for idx in top_k_quant_indices:
                 neighbor_id = song_ids[idx.item()]
+                info = self.song_info_map.get(neighbor_id)
+                display_name = f"{info['name']} - {info['singer']}" if info else neighbor_id
                 similarity = sim_quant[idx.item()].item()
-                print(f"    - {neighbor_id} (Similarity: {similarity:.4f})")
+                print(f"    - {display_name} (Similarity: {similarity:.4f})")
             
-            # Calculate overlap
             orig_set = set(top_k_orig_indices.cpu().numpy())
             quant_set = set(top_k_quant_indices.cpu().numpy())
             overlap = len(orig_set.intersection(quant_set))
@@ -164,6 +195,12 @@ if __name__ == "__main__":
     config = Config()
     log_file_path = os.path.join(config.log_dir, "phase1b_evaluate_rqvae.log")
     logger = setup_logging(log_file_path)
+
+    if config.data.song_info_file == "path/to/your/gen_song_info.csv":
+        logger.warning("="*80)
+        logger.warning("提示: 您还未在 'playlist_src/config.py' 中配置 'song_info_file' 的路径。")
+        logger.warning("歌曲的详细信息（歌名、歌手）将不会被显示。")
+        logger.warning("="*80)
 
     evaluator = Evaluator(config)
     evaluator.run_all_evaluations()
