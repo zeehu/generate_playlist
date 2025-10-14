@@ -7,6 +7,7 @@ import json
 from tqdm import tqdm
 import logging
 from sklearn.model_selection import train_test_split
+import random
 
 # Adjust path to import from playlist_src
 current_dir = os.path.dirname(os.path.abspath(__file__))
