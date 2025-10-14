@@ -7,9 +7,9 @@ from typing import List
 class DataConfig:
     """Configuration for data paths and processing."""
     # --- Paths to be filled by user ---
-    song_info_file: str = "path/to/your/gen_song_info.csv"
-    playlist_info_file: str = "path/to/your/gen_playlist_info.csv"
-    playlist_songs_file: str = "path/to/your/gen_playlist_song.csv"
+    song_info_file: str = "./data/gen_song_info.csv"
+    playlist_info_file: str = "./data/gen_playlist_info.csv"
+    playlist_songs_file: str = "./data/gen_playlist_song.csv"
     
     # Generated files (no need to change)
     semantic_ids_file: str = "outputs/song_semantic_ids.jsonl"
@@ -24,7 +24,7 @@ class DataConfig:
 class SongRQVAEConfig:
     """Configuration for Song RQ-VAE training."""
     # --- Path to be filled by user ---
-    song_vector_file: str = "path/to/your/song_vectors.csv"
+    song_vector_file: str = "./data/song_vectors.csv"
     
     # Model parameters
     input_dim: int = 100
