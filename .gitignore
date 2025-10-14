@@ -23,3 +23,8 @@ wheels/
 .venv
 env/
 venv/
+
+# Output directories
+outputs/
+models/
+logs/
