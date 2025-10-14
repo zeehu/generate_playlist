@@ -91,12 +91,20 @@ class ModelEvaluator:
         return predictions, references
 
     def _compute_metrics(self, predictions: list, references: list):
-        logger.info("Computing evaluation metrics...")
+        logger.info("Computing evaluation metrics from local scripts...")
+
+        # --- Load metrics from local path for offline use ---
+        try:
+            rouge_metric = evaluate.load(os.path.join(self.eval_config.local_metrics_path, 'rouge'))
+            bleu_metric = evaluate.load(os.path.join(self.eval_config.local_metrics_path, 'bleu'))
+        except FileNotFoundError:
+            logger.error("="*80)
+            logger.error(f"FATAL: Metric scripts not found in '{self.eval_config.local_metrics_path}'")
+            logger.error("Please run the download script on an online machine and copy the folder.")
+            logger.error("="*80)
+            sys.exit(1)
 
         # --- Text-based Metrics (ROUGE, BLEU) ---
-        rouge_metric = evaluate.load('rouge')
-        bleu_metric = evaluate.load('bleu')
-
         rouge_results = rouge_metric.compute(predictions=predictions, references=references)
         # For BLEU, references must be a list of lists
         bleu_results = bleu_metric.compute(predictions=predictions, references=[[r] for r in references])
