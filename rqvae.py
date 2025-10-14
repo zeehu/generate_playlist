@@ -151,7 +151,7 @@ class RQVAE(nn.Module):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, List[torch.Tensor]]:
         """Forward pass"""
         # Encode
-        encoded = self.text_encoder(x)
+        encoded = self.encoder(x)
         
         # Quantize
         quantized, vq_loss, indices = self.quantizer(encoded)
