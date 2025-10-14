@@ -1,6 +1,4 @@
-"""
-TIGER: T5-based Generative Recommendation Model
-"""
+
 import torch
 import torch.nn as nn
 from transformers import (

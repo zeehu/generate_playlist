@@ -1,6 +1,4 @@
-"""
-Configuration file for the Playlist Generation Task.
-"""
+
 import os
 from dataclasses import dataclass, field
 from typing import List

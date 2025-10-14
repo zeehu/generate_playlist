@@ -1,6 +1,4 @@
-"""
-Residual Quantized Variational AutoEncoder (RQ-VAE) for generating semantic IDs
-"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

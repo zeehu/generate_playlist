@@ -1,8 +1,5 @@
 
-Phase 5: Interactive Inference and Demonstration.
 
-This script loads the final trained TIGER model and allows a user to
-interactively enter a playlist title to generate a list of recommended songs.
 """
 import os
 import sys

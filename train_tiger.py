@@ -1,8 +1,4 @@
-Phase 3: Train the TIGER (T5) Model for Playlist Generation.
 
-This script uses the Hugging Face Trainer to fine-tune a T5 model on the
-corpus generated in Phase 2. It is optimized for multi-GPU training.
-"""
 import os
 import sys
 from dataclasses import dataclass, field

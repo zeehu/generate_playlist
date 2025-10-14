@@ -1,6 +1,4 @@
-"""
-Phase 1: Train RQ-VAE for Song Semantic ID Generation.
-"""
+
 import os
 import sys
 import torch

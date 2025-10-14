@@ -1,9 +1,5 @@
 
-Phase 2: Generate Training Corpus for the TIGER Model.
 
-This script reads the raw playlist data, combines it with the generated
-semantic IDs, and produces train/val/test splits in a text-to-text format.
-"""
 import os
 import sys
 import pandas as pd

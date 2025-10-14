@@ -1,7 +1,4 @@
-Phase 4: Evaluate the fine-tuned TIGER model.
 
-This script loads the best model from Phase 3, runs inference on the test set,
-and computes generation metrics like ROUGE, BLEU, and set-based F1 for songs.
 """
 import os
 import sys

@@ -1,10 +1,4 @@
-Phase 1b: Evaluate the quality of generated Song Semantic IDs.
 
-This script assesses the trained RQ-VAE model by measuring:
-1. Reconstruction Quality: How well can we reconstruct the original song vector from the semantic ID?
-   - Metrics: Mean Squared Error (MSE) and Cosine Similarity.
-2. Neighborhood Preservation: Do songs that are neighbors in the original vector space
-   remain neighbors after quantization?
 
 import os
 import sys
