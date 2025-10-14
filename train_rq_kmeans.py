@@ -59,7 +59,7 @@ class KMeansTrainer:
         logger.info(f"Loading song vectors from {vector_file}...")
         try:
             # Using pandas is generally faster for large CSVs
-            df = pd.read_csv(vector_file, header=None, dtype={0: str})
+            df = pd.read_csv(vector_file, header=0, dtype={0: str})
             song_ids = df[0].tolist()
             vectors = df.iloc[:, 1:].to_numpy(dtype='float32')
             logger.info(f"Successfully loaded {len(song_ids)} song vectors.")

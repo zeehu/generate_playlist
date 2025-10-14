@@ -34,6 +34,7 @@ class SongVectorDataset(Dataset):
         try:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.reader(f)
+                next(reader, None)  # Skip header row
                 for i, row in enumerate(tqdm(reader, desc="Loading song data")):
                     if not row: continue
                     self.song_ids.append(row[0])
