@@ -1,10 +1,4 @@
-Phase 1b (Alternative): Evaluate the quality of IDs from RQ-KMeans.
 
-This script assesses the quantization quality by:
-1. Reconstructing vectors from the saved codebooks and semantic IDs.
-2. Comparing the original vectors with the reconstructed ones (Cosine Similarity).
-3. Performing neighborhood preservation analysis.
-"""
 import os
 import sys
 import torch

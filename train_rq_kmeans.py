@@ -1,8 +1,5 @@
 
-Phase 1 (Alternative): Generate Song Semantic IDs using RQ-KMeans.
 
-This script uses Faiss for efficient K-Means clustering to perform
-Residual Quantization. It's a non-deep-learning alternative to RQ-VAE.
 
 import os
 import sys
