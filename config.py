@@ -59,11 +59,22 @@ class PlaylistTIGERConfig:
     fp16: bool = True
 
 @dataclass
+class SongRQKMeansConfig:
+    """Configuration for Song RQ-KMeans training."""
+    # Inherits song_vector_file from DataConfig
+    input_dim: int = 100
+    vocab_size: int = 1024  # This is 'k' in k-means
+    levels: int = 2         # Number of residual levels
+    seed: int = 42
+
+
+@dataclass
 class Config:
     """Main configuration for the project."""
     # Sub-configurations
     data: DataConfig = field(default_factory=DataConfig)
     rqvae: SongRQVAEConfig = field(default_factory=SongRQVAEConfig)
+    rqkmeans: SongRQKMeansConfig = field(default_factory=SongRQKMeansConfig)
     tiger: PlaylistTIGERConfig = field(default_factory=PlaylistTIGERConfig)
     
     # Common paths
