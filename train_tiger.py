@@ -5,12 +5,7 @@ from dataclasses import dataclass, field
 
 import torch
 from torch.utils.data import Dataset
-from transformers (
-    Trainer,
-    TrainingArguments,
-    DataCollatorForSeq2Seq,
-    EarlyStoppingCallback
-)
+from transformers import Trainer, TrainingArguments, DataCollatorForSeq2Seq, EarlyStoppingCallback
 import logging
 
 # Adjust path to import from playlist_src
