@@ -77,18 +77,18 @@ class ResidualQuantizer(nn.Module):
             all_indices: list of [B] indices for each level
         """
         residual = x
-        quantized = torch.zeros_like(x)
+        quantized_out = torch.zeros_like(x)
         total_loss = 0
         all_indices = []
         
         for quantizer in self.quantizers:
             q, loss, indices = quantizer(residual)
-            quantized += q
-            residual -= q
-            total_loss += loss
+            quantized_out = quantized_out + q
+            residual = residual - q  # Use out-of-place operation
+            total_loss = total_loss + loss
             all_indices.append(indices)
         
-        return quantized, total_loss, all_indices
+        return quantized_out, total_loss, all_indices
 
 class RQVAE(nn.Module):
     """RQ-VAE model for item representation learning"""
