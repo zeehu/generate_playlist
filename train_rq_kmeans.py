@@ -60,7 +60,7 @@ class KMeansTrainer:
         try:
             # Using pandas is generally faster for large CSVs
             df = pd.read_csv(vector_file, header=0, dtype={0: str})
-            song_ids = df[0].tolist()
+            song_ids = df.iloc[:, 0].tolist()
             vectors = df.iloc[:, 1:].to_numpy(dtype='float32')
             logger.info(f"Successfully loaded {len(song_ids)} song vectors.")
             return song_ids, vectors
