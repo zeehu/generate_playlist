@@ -46,10 +46,18 @@ cd generate_playlist
     ```
 
 ### 3. 安装依赖
-您需要创建一个 `requirements.txt` 文件，包含以下核心依赖，然后通过 `pip` 安装。
+您需要创建一个 `requirements.txt` 文件，包含以下核心依赖。建议使用 `pip` 单独安装 `torch` 以确保版本兼容性。
+
+```bash
+# 强烈建议先运行此命令，以确保 torch 和 torchvision 版本兼容
+pip install --upgrade torch torchvision
+
+# 然后通过 requirements.txt 安装其余依赖
+pip install -r requirements.txt
+```
+
 ```
 # requirements.txt
-torch
 transformers
 pandas
 numpy
@@ -58,11 +66,7 @@ evaluate
 rouge_score
 tqdm
 sentencepiece
-```
-
-```bash
-pip install -r requirements.txt
-```
+faiss-cpu # 或 faiss-gpu
 
 ## 💿 数据准备
 
