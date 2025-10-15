@@ -77,7 +77,8 @@ class ModelEvaluator:
         test_dataset = TestDataset(
             data_path=os.path.join(self.config.output_dir, "test.tsv"),
             tokenizer=self.model.tokenizer,
-            max_input_len=self.config.tiger.max_input_length
+            max_input_len=self.config.tiger.max_input_length,
+            max_target_len=self.config.tiger.max_target_length
         )
 
         # 2. Use Trainer for multi-GPU prediction
