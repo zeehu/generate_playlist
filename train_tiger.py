@@ -105,6 +105,17 @@ class TigerTrainer:
             callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
         )
 
+        # --- Add File Logging to Transformers Logger ---
+        # This ensures that the detailed training logs from the Hugging Face Trainer
+        # are also saved to the specified log file.
+        log_file_path = os.path.join(self.config.log_dir, "phase3_train_tiger.log")
+        transformers_logger = logging.getLogger("transformers")
+        file_handler = logging.FileHandler(log_file_path)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        transformers_logger.addHandler(file_handler)
+        # ---------------------------------------------
+
         # 5. Start Training
         logger.info("Starting training... This may take a while.")
         trainer.train()
