@@ -1,3 +1,4 @@
+
 """
 Phase 4 (Advanced): Evaluate the TIGER model with Multi-GPU support and detailed file output.
 This version uses Accelerate for a memory-efficient, manual inference loop.
@@ -13,7 +14,7 @@ import json
 from typing import Dict, List, Tuple
 
 from torch.utils.data import Dataset, DataLoader
-from accelerate import Accelerator
+from accelerate import Accelerator, DistributedType
 
 # Adjust path to import from playlist_src
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -53,8 +54,8 @@ class TestDataset(Dataset):
             truncation=True,
             padding=False
         )
-        # Return raw text for reference, it will be handled by the collate_fn
-        return {"input_ids": input_encoding.input_ids, "attention_mask": input_encoding.attention_mask, "reference_text": item["target"]}
+        # Return only model inputs
+        return {"input_ids": input_encoding.input_ids, "attention_mask": input_encoding.attention_mask}
 
 class ModelEvaluator:
     """Orchestrates multi-GPU evaluation using Accelerate."""
@@ -79,27 +80,16 @@ class ModelEvaluator:
         )
 
         def collate_fn(examples):
-            # Extract the reference texts, which should not be padded or converted to tensors.
-            reference_texts = [ex.pop("reference_text") for ex in examples]
-            
-            # Pad the remaining features (input_ids, attention_mask)
-            batch = tokenizer.base_tokenizer.pad(examples, padding="longest", return_tensors="pt")
-            
-            # Add the raw reference texts back to the batch.
-            batch["reference_text"] = reference_texts
-            return batch
+            return tokenizer.base_tokenizer.pad(examples, padding="longest", return_tensors="pt")
 
         test_dataloader = DataLoader(test_dataset, shuffle=False, collate_fn=collate_fn, batch_size=self.config.tiger.per_device_eval_batch_size)
 
         self.model, test_dataloader = self.accelerator.prepare(self.model, test_dataloader)
 
         all_predictions = []
-        all_references = []
 
         logger.info("Starting generation on test set (will use all available GPUs)...")
         for batch in tqdm(test_dataloader, desc="Generating Predictions"):
-            references = batch.pop("reference_text")
-
             with torch.no_grad():
                 unwrapped_model = self.accelerator.unwrap_model(self.model)
                 generated_tokens = unwrapped_model.model.generate(
@@ -111,23 +101,20 @@ class ModelEvaluator:
             
             padded_predictions = self.accelerator.pad_across_processes(generated_tokens, dim=1, pad_index=tokenizer.pad_token_id)
             gathered_predictions = self.accelerator.gather(padded_predictions)
-            gathered_references = self.accelerator.gather_for_metrics(references)
-            
             all_predictions.extend(gathered_predictions.cpu().numpy())
-            all_references.extend(gathered_references)
 
         if self.accelerator.is_main_process:
             all_predictions = all_predictions[:len(test_dataset)]
-            all_references = all_references[:len(test_dataset)]
-
-            self._process_and_save_results(test_dataset.data, all_predictions, all_references)
+            self._process_and_save_results(test_dataset.data, all_predictions)
 
         logger.info("--- Phase 4 Completed Successfully ---")
 
-    def _process_and_save_results(self, test_data, predicted_token_ids, reference_texts):
+    def _process_and_save_results(self, test_data: List[Dict], predicted_token_ids: np.ndarray):
         logger.info("Decoding predictions and saving detailed results to file...")
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         str_predictions = unwrapped_model.tokenizer.base_tokenizer.batch_decode(predicted_token_ids, skip_special_tokens=True)
+        
+        reference_texts = [item["target"] for item in test_data]
         str_references = [ref.replace(" <eos>", "") for ref in reference_texts]
 
         output_file_path = os.path.join(self.config.output_dir, "evaluation_results.txt")
