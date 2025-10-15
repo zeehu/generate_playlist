@@ -42,29 +42,25 @@ class PlaylistCorpusDataset(Dataset):
     def __getitem__(self, idx):
         input_text, target_text = self.data[idx]
 
+        # Tokenize without padding. The DataCollator will handle dynamic padding.
         input_encoding = self.tokenizer.base_tokenizer(
             input_text,
             max_length=self.max_input_len,
-            padding="max_length",
             truncation=True,
-            return_tensors="pt"
         )
         target_encoding = self.tokenizer.base_tokenizer(
             target_text,
             max_length=self.max_target_len,
-            padding="max_length",
             truncation=True,
-            return_tensors="pt"
         )
 
-        labels = target_encoding.input_ids
-        # Replace padding token id with -100 so it's ignored in the loss calculation
-        labels[labels == self.tokenizer.pad_token_id] = -100
-
+        # The DataCollatorForSeq2Seq will automatically create decoder_input_ids and
+        # shift the labels for us. We just need to provide the tokenized inputs
+        # and the tokenized labels.
         return {
-            "input_ids": input_encoding.input_ids.flatten(),
-            "attention_mask": input_encoding.attention_mask.flatten(),
-            "labels": labels.flatten()
+            "input_ids": input_encoding.input_ids,
+            "attention_mask": input_encoding.attention_mask,
+            "labels": target_encoding.input_ids,
         }
 
 class TigerTrainer:
