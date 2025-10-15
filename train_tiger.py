@@ -152,7 +152,7 @@ class TigerTrainer:
             # Logging
             logging_dir=os.path.join(self.config.log_dir, "tiger_logs"),
             logging_steps=100,
-            report_to="none",  # Disable all online reporting for offline environment
+            report_to="tensorboard", # Logs to tensorboard
             
             # Required for multi-GPU
             remove_unused_columns=False,
