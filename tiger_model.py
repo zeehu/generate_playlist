@@ -188,7 +188,7 @@ class TIGERModel(nn.Module):
         # Save config
         config_dict = {
             'vocab_size': self.vocab_size,
-            'base_model': self.config.name_or_path if hasattr(self.config, 'name_or_path') else 't5-small'
+            'base_model': self.base_model_path
         }
         
         with open(os.path.join(save_directory, 'tiger_config.json'), 'w') as f:
