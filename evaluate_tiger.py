@@ -27,9 +27,10 @@ logger = logging.getLogger(__name__)
 
 class TestDataset(Dataset):
     """Dataset for loading the test portion of the corpus."""
-    def __init__(self, data_path: str, tokenizer: TIGERTokenizer, max_input_len: int):
+    def __init__(self, data_path: str, tokenizer: TIGERTokenizer, max_input_len: int, max_target_len: int):
         self.tokenizer = tokenizer
         self.max_input_len = max_input_len
+        self.max_target_len = max_target_len
         self.data = []
 
         logger.info(f"Loading test data from {data_path}...")
@@ -50,8 +51,14 @@ class TestDataset(Dataset):
             item["input_text"],
             max_length=self.max_input_len,
             truncation=True,
-            padding=False # Let collator handle padding
         )
+        target_encoding = self.tokenizer.base_tokenizer(
+            item["target"],
+            max_length=self.max_target_len,
+            truncation=True,
+        )
+        
+        input_encoding["labels"] = target_encoding.input_ids
         return input_encoding
 
 class ModelEvaluator:
