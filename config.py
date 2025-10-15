@@ -44,7 +44,7 @@ class SongRQVAEConfig:
 @dataclass
 class PlaylistTIGERConfig:
     """Configuration for the TIGER model for playlist generation."""
-    model_name: str = "t5-small"
+    model_name: str = "/home/search/base-model/mengzi-t5-base/"
     max_input_length: int = 128  # Max length for playlist title/tags
     max_target_length: int = 256 # Max length for song sequence (e.g., 128 songs * 2 tokens/song)
     
