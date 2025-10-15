@@ -58,8 +58,7 @@ class CorpusBuilder:
     def _load_playlist_info(self) -> dict:
         logger.info(f"Loading playlist info from {self.data_config.playlist_info_file}...")
         try:
-            df = pd.read_csv(self.data_config.playlist_info_file)
-            # Assuming columns are: glid, listname, tag_list
+            df = pd.read_csv(self.data_config.playlist_info_file, dtype=str)
             df.set_index('glid', inplace=True)
             info_dict = df.to_dict('index')
             logger.info(f"Loaded info for {len(info_dict)} playlists.")
@@ -72,9 +71,8 @@ class CorpusBuilder:
     def _load_playlist_songs(self) -> dict:
         logger.info(f"Loading playlist songs from {self.data_config.playlist_songs_file}...")
         try:
+            # Enforce string type for ID columns to prevent mismatches
             df = pd.read_csv(self.data_config.playlist_songs_file, dtype=str)
-            # Assuming columns are: special_gid, mixsongid
-            # Group songs by playlist ID
             grouped = df.groupby('special_gid')['mixsongid'].apply(list)
             songs_dict = grouped.to_dict()
             logger.info(f"Loaded song lists for {len(songs_dict)} playlists.")
@@ -92,33 +90,28 @@ class CorpusBuilder:
             if glid not in playlist_info:
                 continue
 
-            # 1. Construct input text
             info = playlist_info[glid]
             title = info.get('listname', '')
             tags = info.get('tag_list', '')
             input_text = f"歌单标题：{title} | 歌单标签：{tags}"
 
-            # 2. Construct output sequence
-            # CRITICAL: Sort songs by ID to ensure canonical order and avoid one-to-many issues.
             sorted_songs = sorted(songs)
             
             semantic_tokens = []
             for song_id in sorted_songs:
                 if song_id in semantic_id_map:
-                    # Format semantic IDs into tokens
                     tokens = [f"<id_{sid}>" for sid in semantic_id_map[song_id]]
                     semantic_tokens.extend(tokens)
             
             if not semantic_tokens:
                 continue
 
-            # Truncate to max target length, leaving space for <eos>
             max_len = self.tiger_config.max_target_length - 1
             truncated_tokens = semantic_tokens[:max_len]
             
             output_sequence = " ".join(truncated_tokens) + " <eos>"
             
-            corpus.append((input_text, output_sequence))
+            corpus.append((glid, input_text, output_sequence))
         
         logger.info(f"Successfully built corpus with {len(corpus)} entries.")
         return corpus
@@ -126,10 +119,8 @@ class CorpusBuilder:
     def _split_and_save(self, corpus: list):
         logger.info("Splitting data and saving to files...")
         
-        # Shuffle the corpus first
         random.shuffle(corpus)
 
-        # Calculate split indices
         train_ratio = self.data_config.train_split_ratio
         val_ratio = self.data_config.val_split_ratio
         
@@ -142,7 +133,6 @@ class CorpusBuilder:
 
         logger.info(f"Data split: {len(train_data)} train, {len(val_data)} validation, {len(test_data)} test.")
 
-        # Save files
         output_dir = self.config.output_dir
         self._save_to_tsv(train_data, os.path.join(output_dir, "train.tsv"))
         self._save_to_tsv(val_data, os.path.join(output_dir, "val.tsv"))
@@ -159,7 +149,6 @@ if __name__ == "__main__":
     log_file_path = os.path.join(config.log_dir, "phase2_prepare_corpus.log")
     logger = setup_logging(log_file_path)
 
-    # Check for placeholder paths
     if config.data.playlist_info_file == "path/to/your/gen_playlist_info.csv" or \
        config.data.playlist_songs_file == "path/to/your/gen_playlist_song.csv":
         logger.error("="*80)
