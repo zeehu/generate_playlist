@@ -92,8 +92,8 @@ class CorpusBuilder:
 
             info = playlist_info[glid]
             title = info.get('listname', '')
-            tags = info.get('tag_list', '')
-            input_text = f"歌单标题：{title} | 歌单标签：{tags}"
+            # We now only use the title as input for a more general model.
+            input_text = title
 
             sorted_songs = sorted(songs)
             

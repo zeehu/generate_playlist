@@ -76,7 +76,8 @@ class PlaylistGenerator:
 
     def generate(self, title: str, tags: str = "") -> List[str]:
         """Generates a playlist for a given title and optional tags."""
-        prompt = f"歌单标题：{title} | 歌单标签：{tags}"
+        # Format the input prompt to match the training format (title only)
+        prompt = title
         logger.info(f"Generating with prompt: {prompt}")
 
         input_ids = self.model.tokenizer.base_tokenizer(prompt, return_tensors="pt").input_ids.to(self.device)
