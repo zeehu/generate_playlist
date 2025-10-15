@@ -31,8 +31,13 @@ class PlaylistCorpusDataset(Dataset):
         logger.info(f"Loading data from {data_path}...")
         with open(data_path, 'r', encoding='utf-8') as f:
             for line in f:
-                if '\t' in line:
-                    input_text, target_text = line.strip().split('\t', 1)
+                parts = line.strip().split('	')
+                # Handle both 2-column (old) and 3-column (new) formats for robustness
+                if len(parts) == 2:
+                    input_text, target_text = parts
+                    self.data.append((input_text, target_text))
+                elif len(parts) == 3:
+                    _glid, input_text, target_text = parts
                     self.data.append((input_text, target_text))
         logger.info(f"Loaded {len(self.data)} samples.")
 

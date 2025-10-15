@@ -153,8 +153,8 @@ class CorpusBuilder:
     def _save_to_tsv(self, data: list, file_path: str):
         logger.info(f"Saving {len(data)} records to {file_path}...")
         with open(file_path, 'w', encoding='utf-8') as f:
-            for input_text, output_sequence in data:
-                f.write(f"{input_text}\t{output_sequence}\n")
+            for glid, input_text, output_sequence in data:
+                f.write(f"{glid}\t{input_text}\t{output_sequence}\n")
 
 if __name__ == "__main__":
     config = Config()
