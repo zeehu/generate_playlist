@@ -82,7 +82,11 @@ class ModelEvaluator:
             report_to="none",
         )
 
-        trainer = Trainer(model=self.model.model, args=training_args)
+        trainer = Trainer(
+            model=self.model.model, 
+            args=training_args,
+            data_collator=DataCollatorForSeq2Seq(tokenizer=self.model.tokenizer.base_tokenizer, model=self.model.model)
+        )
         logger.info("Starting prediction on test set (will use all available GPUs)...")
         predictions = trainer.predict(test_dataset)
         
