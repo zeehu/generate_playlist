@@ -60,8 +60,20 @@ def find_collisions(config: Config):
         print("This means every song has a unique semantic ID.")
     else:
         total_songs_affected = sum(len(songs) for _, songs in collisions)
+        max_collision_size = 0
+        worst_offender = None
+        for semantic_id, songs in collisions:
+            if len(songs) > max_collision_size:
+                max_collision_size = len(songs)
+                worst_offender = (semantic_id, songs)
+
         print(f"\nFound {len(collisions)} unique semantic IDs that have collisions.")
         print(f"A total of {total_songs_affected} songs are involved in these collisions.")
+        print("\n" + "-"*40)
+        print(f"Worst Collision Case:")
+        print(f"  A single Semantic ID {worst_offender[0]} was assigned to {max_collision_size} different songs.")
+        print("-"*40)
+
         print("\n--- Example Collisions (showing first 5) ---")
         
         for i, (semantic_id, songs) in enumerate(collisions[:5]):
