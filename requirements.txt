@@ -1,0 +1,24 @@
+# Core ML/DL Libraries
+# It is often recommended to install torch/torchvision first based on your CUDA version
+torch
+torchvision
+transformers
+accelerate
+
+# Data Handling
+pandas
+numpy
+scikit-learn
+
+# Metrics & NLP Toolkit
+rouge_score
+nltk
+sentencepiece
+
+# Vector Search / Clustering
+# Please install either faiss-cpu or faiss-gpu depending on your environment.
+# For example: conda install -c pytorch faiss-gpu
+faiss-cpu
+
+# Utilities
+tqdm

@@ -50,29 +50,14 @@ cd generate_playlist
     ```
 
 ### 3. 安装依赖
-您需要创建一个 `requirements.txt` 文件，包含以下核心依赖，然后通过 `pip` 安装。
 
-```
-# requirements.txt
-torch
-torchvision
-transformers
-pandas
-numpy
-scikit-learn
-rouge_score
-nltk
-tqdm
-sentencepiece
-faiss-cpu # 或 faiss-gpu
-accelerate
-```
+项目所需的所有Python库都记录在 `requirements.txt` 文件中。请执行以下命令进行安装。
 
 ```bash
-# 强烈建议先单独安装 torch 和 torchvision 以确保版本兼容
-pip install --upgrade torch torchvision
+# 建议先根据您的CUDA环境手动安装torch和faiss, 因为它们有特定的版本要求
+# 例如: conda install -c pytorch torch torchvision faiss-gpu
 
-# 然后安装其余依赖
+# 然后通过 requirements.txt 安装其余的库
 pip install -r requirements.txt
 ```
 
