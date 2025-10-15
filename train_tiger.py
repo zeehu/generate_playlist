@@ -144,7 +144,7 @@ class TigerTrainer:
             dataloader_num_workers=self.config.num_workers,
 
             # Evaluation and saving strategy
-            evaluation_strategy="steps",
+            eval_strategy="steps",
             eval_steps=1000,
             save_strategy="steps",
             save_steps=1000,
