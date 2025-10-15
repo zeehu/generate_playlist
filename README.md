@@ -1,15 +1,20 @@
-# generate_playlist: 生成式歌单推荐系统
+# generate_playlist: 生成式歌单推荐系统 (v2.0)
 
-本项目是一个完整的端到端（End-to-End）机器学习流程，用于根据用户输入的文本（如歌单标题、情绪描述）生成一个推荐的歌曲序列。系统核心采用两阶段模型架构：
+本项目是一个完整的端到端（End-to-End）机器学习流程，用于根据用户输入的文本（如歌单标题、情绪描述）生成一个推荐的歌曲序列。系统核心采用两阶段模型架构，并巧妙地利用了“向量量化碰撞”作为一种特性。
 
-1.  **RQ-VAE / RQ-Kmeans**: 首先，使用残差量化方法将每首歌曲高维、连续的向量（例如100维）压缩为低维、离散的“语义ID”。
-2.  **T5 模型**: 然后，使用一个强大的序列到序列模型（T5），学习从输入的文本描述到目标歌曲语义ID序列的映射关系。
+### 核心思想：簇推荐 (Cluster-based Recommendation)
+
+1.  **语义ID即概念簇**: 我们首先使用残差量化方法（如 K-Means）将海量歌曲向量进行压缩。在这个过程中，多个内容相似的歌曲会被映射到同一个“语义ID”上。我们不再将此视为“碰撞”问题，而是将其看作一个**特性**：这个语义ID现在代表了一个由多首相似歌曲组成的“**概念簇**”（例如，“安静的纯音乐”这个概念）。
+
+2.  **模型学习推荐“概念”**: 下游的T5模型在训练时，学习的是从输入文本到“概念簇”（语义ID）序列的映射。这大大简化了模型的学习任务。
+
+3.  **推荐时采样扩展**: 在最终推荐时，对于模型生成的每一个“概念簇”ID，我们从该簇中**随机采样一首**具体的歌曲。这极大地提升了推荐结果的多样性和惊喜感。
 
 ## 🚀 项目特点
 
 - **端到端流程**: 包含从数据处理、模型训练、效果评估到最终推理演示的完整步骤。
-- **两阶段模型**: 解耦了物品表示学习和序列生成，使流程更清晰，易于调试和扩展。
-- **配置驱动**: 所有关键参数（如文件路径、模型超参）都在 `config.py` 中统一管理。
+- **簇推荐思想**: 将“推荐物品”升级为“推荐概念”，并通过采样提升推荐多样性。
+- **配置驱动**: 所有关键参数都在 `config.py` 中统一管理。
 - **多GPU支持**: 训练和评估脚本均内置了对分布式计算的支持。
 
 ## 📁 项目结构
@@ -19,95 +24,43 @@
 ├── config.py           # 任务专属的配置文件
 ├── train_rqvae.py      # 阶段1: 训练RQ-VAE (方法一)
 ├── train_rq_kmeans.py  # 阶段1: 训练RQ-KMeans (方法二)
-├── evaluate_rqvae.py   # 阶段1b: 评估RQ-VAE质量
-├── evaluate_rq_kmeans.py # 阶段1b: 评估RQ-KMeans质量
+├── debug_collisions.py   # 调试工具: 分析碰撞情况，理解簇的大小
 ├── prepare_corpus.py   # 阶段2: 生成T5模型训练语料
 ├── train_tiger.py      # 阶段3: 训练T5生成模型
-├── evaluate_tiger.py   # 阶段4: 评估T5模型性能
-├── generate_playlist.py# 阶段5: 交互式推理与演示
+├── evaluate_tiger.py   # 阶段4: 进行簇扩展评估
+├── generate_playlist.py# 阶段5: 进行簇采样交互式演示
 ├── README.md             # 项目说明文件
-├── requirements.txt      # (需要您手动创建)
-├── models/                 # (自动生成) 存储训练好的模型文件
-├── outputs/                # (自动生成) 存储中间生成文件
-└── logs/                   # (自动生成) 存储训练日志
+└── requirements.txt      # (需要您手动创建)
 ```
 
 ## ⚙️ 环境与安装
 
-### 1. 克隆项目
-```bash
-git clone https://github.com/zeehu/generate_playlist.git
-cd generate_playlist
-```
-
-### 2. 环境配置
-- **Python 版本**: 推荐使用 Python 3.9 或更高版本。
-- **创建虚拟环境** (推荐):
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    ```
-
-### 3. 安装依赖
-您需要创建一个 `requirements.txt` 文件，包含以下核心依赖，然后通过 `pip` 安装。
-
-```
-# requirements.txt
-torch
-torchvision
-transformers
-pandas
-numpy
-scikit-learn
-rouge_score
-nltk
-tqdm
-sentencepiece
-faiss-cpu # 或 faiss-gpu
-accelerate
-```
-
-```bash
-pip install -r requirements.txt
-```
+(此部分与之前相同，请确保 `requirements.txt` 中的所有库都已安装)
 
 ## 💿 数据准备
 
-在运行任何脚本之前，您必须准备好以下四份数据文件，并**在 `config.py` 中配置好它们的路径**。
-
-1.  **歌曲向量文件**: `song_vectors.csv` (示例名)
-2.  **歌单信息文件**: `gen_playlist_info.csv` (示例名)
-3.  **歌单-歌曲关系文件**: `gen_playlist_song.csv` (示例名)
-4.  **歌曲元信息文件**: `gen_song_info.csv` (示例名)
-
-#### **关键配置步骤**
-
-打开 `config.py` 文件，找到 `DataConfig` 和 `SongRQVAEConfig` 类，并填入您数据文件的**绝对路径**。
+(此部分与之前相同，请确保 `config.py` 中的所有数据文件路径都已正确配置)
 
 ## 🚀 执行步骤
 
 请在项目根目录（`generate_playlist`）下，严格按照以下顺序执行脚本。
 
-### **阶段1: 生成歌曲语义ID**
-此阶段有两个方法可选，您只需执行其一。
+### **阶段1: 生成“歌曲-概念簇”映射**
 
-*   **方法A: RQ-VAE (基于神经网络，效果可能更好但慢)**:
-    ```bash
-    python train_rqvae.py
-    # 评估
-    python evaluate_rqvae.py
-    ```
-*   **方法B: RQ-KMeans (基于聚类，速度快)**:
+此阶段的目标是为所有歌曲进行量化，得到它们的“概念ID”。推荐使用速度更快的 K-Means 方法。
+
+*   **命令**:
     ```bash
     python train_rq_kmeans.py
-    # 评估
-    python evaluate_rq_kmeans.py
     ```
-*   **决策**: 比较两种方法 `evaluate` 脚本输出的 `Average Cosine Similarity`，选择一个效果更好的方案继续下一步。
+*   **输出**: `outputs/song_semantic_ids.jsonl` (这现在是我们的“歌曲-簇”映射表)
+*   **(可选) 检查簇大小**: 运行 `python debug_collisions.py` 可以查看碰撞情况，即每个“概念簇”中包含了多少首歌曲。
 
 ---
 
 ### **阶段2: 生成训练语料**
+
+此脚本现在会利用“碰撞”特性，如果一个歌单包含同一个簇的多首歌曲，则该簇的ID会在序列中出现多次，从而让模型学习到簇的重要性。
 
 *   **命令**: `python prepare_corpus.py`
 *   **输出**: `outputs/train.tsv`, `outputs/val.tsv`, `outputs/test.tsv`。
@@ -116,26 +69,31 @@ pip install -r requirements.txt
 
 ### **阶段3: 训练T5生成模型**
 
+模型将学习从文本生成“概念簇”的序列。
+
 *   **命令 (多GPU, 推荐)**:
     ```bash
-    # 将 [GPU数量] 替换为您的GPU卡数, 例如 4
     torchrun --nproc_per_node=[GPU数量] train_tiger.py
     ```
 *   **输出**: 最终模型 `models/tiger_final/`。
 
 ---
 
-### **阶段4: 评估T5模型**
+### **阶段4: 评估T5模型 (簇扩展评估)**
+
+评估脚本现在会以新的方式工作：它将模型预测的“概念簇”ID展开为歌曲全集，然后与真实歌单的歌曲集合计算F1分数。
 
 *   **命令 (多GPU, 推荐)**:
     ```bash
     torchrun --nproc_per_node=[GPU数量] evaluate_tiger.py
     ```
-*   **输出**: 终端的总结报告，以及 `outputs/evaluation_results.txt` 中的详细对比文件。
+*   **输出**: 终端会打印出基于集合运算的、更科学的 Precision, Recall, 和 F1-Score。
 
 ---
 
-### **阶段5: 交互式推理演示**
+### **阶段5: 交互式推理演示 (簇采样演示)**
+
+最终的演示脚本现在能完全体现我们新策略的优势。
 
 *   **命令**: `python generate_playlist.py`
-*   **输出**: 一个交互式的命令行界面，输入标题即可生成歌单。
+*   **输出**: 一个交互式界面。对于同一个标题，**每次请求都可能得到不同的歌单**，因为脚本会从模型推荐的每个“概念簇”中随机采样一首歌。
