@@ -67,6 +67,7 @@ rouge_score
 tqdm
 sentencepiece
 faiss-cpu # 或 faiss-gpu
+accelerate
 
 ## 💿 数据准备
 
