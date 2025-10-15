@@ -71,17 +71,22 @@ class ModelEvaluator:
     def run_evaluation(self):
         logger.info("--- Starting Phase 4: Final Model Evaluation (Accelerate) ---")
 
+        # Get the tokenizer BEFORE the model is wrapped by accelerator
+        tokenizer = self.model.tokenizer
+
         test_dataset = TestDataset(
             data_path=os.path.join(self.config.output_dir, "test.tsv"),
-            tokenizer=self.model.tokenizer,
+            tokenizer=tokenizer,
             max_input_len=self.config.tiger.max_input_length
         )
 
+        # The collate_fn now closes over the local tokenizer variable
         def collate_fn(examples):
-            return self.model.tokenizer.base_tokenizer.pad(examples, padding="longest", return_tensors="pt")
+            return tokenizer.base_tokenizer.pad(examples, padding="longest", return_tensors="pt")
 
         test_dataloader = DataLoader(test_dataset, shuffle=False, collate_fn=collate_fn, batch_size=self.config.tiger.per_device_eval_batch_size)
 
+        # Prepare model and dataloader for distributed execution
         self.model, test_dataloader = self.accelerator.prepare(self.model, test_dataloader)
 
         all_predictions = []
@@ -89,8 +94,11 @@ class ModelEvaluator:
 
         logger.info("Starting generation on test set (will use all available GPUs)...")
         for batch in tqdm(test_dataloader, desc="Generating Predictions"):
+            # reference_text is not a tensor, so it's not moved to device
+            # We need to handle it manually if we were to use it inside the loop
+            references = batch.pop("reference_text")
+
             with torch.no_grad():
-                # Use the unwrapped model for generate function
                 unwrapped_model = self.accelerator.unwrap_model(self.model)
                 generated_tokens = unwrapped_model.model.generate(
                     input_ids=batch["input_ids"],
@@ -99,21 +107,21 @@ class ModelEvaluator:
                     num_beams=3
                 )
             
+            # Pad predictions to the same length across all processes
+            padded_predictions = self.accelerator.pad_across_processes(generated_tokens, dim=1, pad_index=tokenizer.pad_token_id)
+            
             # Gather results from all processes
-            gathered_predictions = self.accelerator.gather(generated_tokens)
-            gathered_references = self.accelerator.gather_for_metrics(batch["reference_text"])
+            gathered_predictions = self.accelerator.gather(padded_predictions)
+            gathered_references = self.accelerator.gather_for_metrics(references)
             
             all_predictions.extend(gathered_predictions.cpu().numpy())
             all_references.extend(gathered_references)
 
         if self.accelerator.is_main_process:
-            # Ensure we only process the full dataset once
             all_predictions = all_predictions[:len(test_dataset)]
             all_references = all_references[:len(test_dataset)]
 
             self._process_and_save_results(test_dataset.data, all_predictions, all_references)
-
-        logger.info("--- Phase 4 Completed Successfully ---")
 
     def _process_and_save_results(self, test_data, predicted_token_ids, reference_texts):
         # (This part is similar to before, but runs only on the main process)
