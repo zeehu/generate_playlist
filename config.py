@@ -28,7 +28,7 @@ class SongRQVAEConfig:
     
     # Model parameters
     input_dim: int = 100
-    vocab_size: int = 1024
+    vocab_size: int = 2048
     levels: int = 2
     dim: int = 256
     hidden_dim: int = 512
@@ -71,7 +71,7 @@ class SongRQKMeansConfig:
     """Configuration for Song RQ-KMeans training."""
     # Inherits song_vector_file from DataConfig
     input_dim: int = 100
-    vocab_size: int = 1024  # This is 'k' in k-means
+    vocab_size: int = 2048  # This is 'k' in k-means
     levels: int = 2         # Number of residual levels
     seed: int = 42
 

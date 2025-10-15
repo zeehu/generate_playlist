@@ -95,11 +95,10 @@ class CorpusBuilder:
             tags = info.get('tag_list', '')
             input_text = f"歌单标题：{title} | 歌单标签：{tags}"
 
-            # CRITICAL: Remove duplicates, then sort songs by ID to ensure canonical order.
-            unique_songs = sorted(list(set(songs)))
+            sorted_songs = sorted(songs)
             
             semantic_tokens = []
-            for song_id in unique_songs:
+            for song_id in sorted_songs:
                 if song_id in semantic_id_map:
                     tokens = [f"<id_{sid}>" for sid in semantic_id_map[song_id]]
                     semantic_tokens.extend(tokens)
@@ -107,8 +106,19 @@ class CorpusBuilder:
             if not semantic_tokens:
                 continue
 
+            # De-duplicate the final semantic token sequence to handle any collisions
+            final_tokens = []
+            seen_chunks = set()
+            chunk_size = self.config.rqvae.levels
+            for i in range(0, len(semantic_tokens), chunk_size):
+                chunk = tuple(semantic_tokens[i:i+chunk_size])
+                if chunk not in seen_chunks:
+                    final_tokens.extend(list(chunk))
+                    seen_chunks.add(chunk)
+
+            # Truncate to max target length, leaving space for <eos>
             max_len = self.tiger_config.max_target_length - 1
-            truncated_tokens = semantic_tokens[:max_len]
+            truncated_tokens = final_tokens[:max_len]
             
             output_sequence = " ".join(truncated_tokens) + " <eos>"
             
