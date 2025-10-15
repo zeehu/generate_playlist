@@ -152,36 +152,34 @@ class ModelEvaluator:
         return list(dict.fromkeys([tuple(numerical_ids[i:i+chunk_size]) for i in range(0, len(numerical_ids) - chunk_size + 1, chunk_size)]))
 
     def _compute_summary_metrics(self, predictions: list, references: list):
-        # Metric 1 & 2: ROUGE and BLEU on semantic ID strings
+        # --- Metric 1: ROUGE-L on Semantic ID strings (order-aware recall) ---
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
         rouge_l_f1 = np.mean([scorer.score(ref, pred)['rougeL'].fmeasure for ref, pred in zip(references, predictions)])
+
+        # --- Metric 2: BLEU-4 on Semantic ID strings (order-aware precision) ---
         chencherry = SmoothingFunction()
         bleu_scores = [sentence_bleu([ref.split()], pred.split(), smoothing_function=chencherry.method1) for ref, pred in zip(references, predictions)]
         avg_bleu = np.mean(bleu_scores)
 
-        # Metric 3: Cluster-Aware Song F1-Score
+        # --- Metric 3: F1-Score on the SET of Semantic IDs (order-agnostic) ---
         f1_scores = []
         for pred_str, ref_str in zip(predictions, references):
-            ref_sem_ids = self._get_semantic_tuples(ref_str)
-            ref_song_ids = set([self.sem_id_to_songs_map.get(t, [None])[0] for t in ref_sem_ids if t in self.sem_id_to_songs_map])
-
-            pred_sem_ids = self._get_semantic_tuples(pred_str)
-            predicted_song_ids = set()
-            for sem_id_tuple in pred_sem_ids:
-                predicted_song_ids.update(self.sem_id_to_songs_map.get(sem_id_tuple, []))
-            
-            f1 = self._calculate_f1_from_sets(predicted_song_ids, ref_song_ids)
+            # Get the unique set of semantic IDs for prediction and reference
+            pred_set = set(pred_str.split())
+            ref_set = set(ref_str.split())
+            f1 = self._calculate_f1_from_sets(pred_set, ref_set)
             f1_scores.append(f1)
         avg_f1 = np.mean(f1_scores)
 
+        # --- Print Report ---
         print("\n" + "="*60)
-        print("  TIGER Model Evaluation Summary")
+        print("  TIGER Model Evaluation Summary (Semantic ID based)")
         print("="*60)
-        print("  [Semantic ID Sequence Metrics]")
+        print("  [Sequence-based Metrics]")
         print(f"  ROUGE-L (F1-Score): {rouge_l_f1:.4f}")
         print(f"  BLEU-4 Score:       {avg_bleu:.4f}")
-        print("\n  [Expanded Song Set Metrics]")
-        print(f"  Avg. Song F1-Score: {avg_f1:.4f}")
+        print("\n  [Set-based Metrics]")
+        print(f"  Avg. Semantic ID F1-Score: {avg_f1:.4f}")
         print("="*60)
 
     def _calculate_f1_from_sets(self, pred_set, ref_set):
