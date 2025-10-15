@@ -94,7 +94,7 @@ class Config:
     # System settings
     device: str = "cuda"
     seed: int = 42
-    num_workers: int = 4
+    num_workers: int = 2
     
     def __post_init__(self):
         # Create directories if they don't exist
