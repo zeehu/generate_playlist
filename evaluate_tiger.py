@@ -22,7 +22,7 @@ if current_dir not in sys.path:
     sys.path.append(current_dir)
 
 from config import Config
-from tiger_model import TIGERModel
+from tiger_model import TIGERModel, TIGERTokenizer
 from utils import setup_logging
 
 logger = logging.getLogger(__name__)
