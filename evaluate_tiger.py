@@ -87,6 +87,7 @@ class ModelEvaluator:
             per_device_eval_batch_size=self.config.tiger.per_device_eval_batch_size,
             dataloader_num_workers=self.config.num_workers,
             fp16=self.config.tiger.fp16,
+            fp16_full_eval=True, # Use fp16 for evaluation as well
             report_to="none",
         )
 
