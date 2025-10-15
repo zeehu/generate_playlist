@@ -118,7 +118,11 @@ class ModelEvaluator:
     def _process_and_save_results(self, test_data, predicted_token_ids, reference_texts):
         # (This part is similar to before, but runs only on the main process)
         logger.info("Decoding predictions and saving detailed results to file...")
-        str_predictions = self.model.tokenizer.base_tokenizer.batch_decode(predicted_token_ids, skip_special_tokens=True)
+
+        # Unwrap the model to access custom attributes like .tokenizer
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
+
+        str_predictions = unwrapped_model.tokenizer.base_tokenizer.batch_decode(predicted_token_ids, skip_special_tokens=True)
         str_references = [ref.replace(" <eos>", "") for ref in reference_texts]
 
         output_file_path = os.path.join(self.config.output_dir, "evaluation_results.txt")
