@@ -146,24 +146,31 @@ class ModelEvaluator:
         return reconstructed_song_ids
 
     def _compute_summary_metrics(self, predictions: list, references: list):
-        rouge_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'rouge'))
-        rouge_results = rouge_metric.compute(predictions=predictions, references=references)
+        logger.info("Computing evaluation metrics using local implementations...")
 
-        # Try to load BLEU, but don't fail if it's not there
-        bleu_results = {"bleu": 0.0}
-        try:
-            bleu_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'bleu'))
-            bleu_results = bleu_metric.compute(predictions=predictions, references=[[r] for r in references])
-        except FileNotFoundError:
-            logger.warning("BLEU metric script not found. Skipping BLEU score calculation.")
+        # 1. ROUGE Score
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+        rouge_l_f1 = np.mean([scorer.score(ref, pred)['rougeL'].fmeasure for ref, pred in zip(references, predictions)])
 
-        total_f1 = np.mean([self._calculate_f1(p, r) for p, r in zip(predictions, references)])
+        # 2. BLEU Score
+        chencherry = SmoothingFunction()
+        bleu_scores = []
+        for ref, pred in zip(references, predictions):
+            ref_tokens = [ref.split()]
+            pred_tokens = pred.split()
+            bleu_scores.append(sentence_bleu(ref_tokens, pred_tokens, smoothing_function=chencherry.method1))
+        avg_bleu = np.mean(bleu_scores)
+
+        # 3. Set-based F1 Score
+        avg_f1 = np.mean([self._calculate_f1(p, r) for p, r in zip(predictions, references)])
+
+        # --- Print Report ---
         print("\n" + "="*50)
         print("  TIGER Model Evaluation Summary")
         print("="*50)
-        print(f"  ROUGE-L (F1-Score): {rouge_results['rougeL']:.4f}")
-        print(f"  BLEU-4 Score:       {bleu_results['bleu']:.4f}")
-        print(f"  Avg. Song F1-Score: {total_f1:.4f}")
+        print(f"  ROUGE-L (F1-Score): {rouge_l_f1:.4f}")
+        print(f"  BLEU-4 Score:       {avg_bleu:.4f}")
+        print(f"  Avg. Song F1-Score: {avg_f1:.4f}")
         print("="*50)
 
     def _calculate_f1(self, pred, ref):

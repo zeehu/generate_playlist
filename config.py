@@ -83,7 +83,6 @@ class Config:
     data: DataConfig = field(default_factory=DataConfig)
     rqvae: SongRQVAEConfig = field(default_factory=SongRQVAEConfig)
     rqkmeans: SongRQKMeansConfig = field(default_factory=SongRQKMeansConfig)
-    eval: EvalConfig = field(default_factory=EvalConfig)
     tiger: PlaylistTIGERConfig = field(default_factory=PlaylistTIGERConfig)
     
     # Common paths
