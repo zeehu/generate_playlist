@@ -57,6 +57,7 @@ scikit-learn
 evaluate
 rouge_score
 tqdm
+sentencepiece
 ```
 
 ```bash
