@@ -6,7 +6,6 @@ This version uses Accelerate for a memory-efficient, manual inference loop.
 import os
 import sys
 import torch
-import evaluate
 from tqdm import tqdm
 import logging
 import numpy as np
@@ -15,6 +14,10 @@ from typing import Dict, List, Tuple
 
 from torch.utils.data import Dataset, DataLoader
 from accelerate import Accelerator, DistributedType
+
+# Dependencies for offline metrics
+from rouge_score import rouge_scorer
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 
 # Adjust path to import from playlist_src
 current_dir = os.path.dirname(os.path.abspath(__file__))
