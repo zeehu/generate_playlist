@@ -1,4 +1,3 @@
-
 """
 Phase 4 (Advanced): Evaluate the TIGER model with Multi-GPU support and detailed file output.
 This version uses Accelerate for a memory-efficient, manual inference loop.
@@ -54,7 +53,7 @@ class TestDataset(Dataset):
             truncation=True,
             padding=False
         )
-        # Return raw text for reference
+        # Return raw text for reference, it will be handled by the collate_fn
         return {"input_ids": input_encoding.input_ids, "attention_mask": input_encoding.attention_mask, "reference_text": item["target"]}
 
 class ModelEvaluator:
@@ -71,7 +70,6 @@ class ModelEvaluator:
     def run_evaluation(self):
         logger.info("--- Starting Phase 4: Final Model Evaluation (Accelerate) ---")
 
-        # Get the tokenizer BEFORE the model is wrapped by accelerator
         tokenizer = self.model.tokenizer
 
         test_dataset = TestDataset(
@@ -80,13 +78,19 @@ class ModelEvaluator:
             max_input_len=self.config.tiger.max_input_length
         )
 
-        # The collate_fn now closes over the local tokenizer variable
         def collate_fn(examples):
-            return tokenizer.base_tokenizer.pad(examples, padding="longest", return_tensors="pt")
+            # Extract the reference texts, which should not be padded or converted to tensors.
+            reference_texts = [ex.pop("reference_text") for ex in examples]
+            
+            # Pad the remaining features (input_ids, attention_mask)
+            batch = tokenizer.base_tokenizer.pad(examples, padding="longest", return_tensors="pt")
+            
+            # Add the raw reference texts back to the batch.
+            batch["reference_text"] = reference_texts
+            return batch
 
         test_dataloader = DataLoader(test_dataset, shuffle=False, collate_fn=collate_fn, batch_size=self.config.tiger.per_device_eval_batch_size)
 
-        # Prepare model and dataloader for distributed execution
         self.model, test_dataloader = self.accelerator.prepare(self.model, test_dataloader)
 
         all_predictions = []
@@ -94,8 +98,6 @@ class ModelEvaluator:
 
         logger.info("Starting generation on test set (will use all available GPUs)...")
         for batch in tqdm(test_dataloader, desc="Generating Predictions"):
-            # reference_text is not a tensor, so it's not moved to device
-            # We need to handle it manually if we were to use it inside the loop
             references = batch.pop("reference_text")
 
             with torch.no_grad():
@@ -107,10 +109,7 @@ class ModelEvaluator:
                     num_beams=3
                 )
             
-            # Pad predictions to the same length across all processes
             padded_predictions = self.accelerator.pad_across_processes(generated_tokens, dim=1, pad_index=tokenizer.pad_token_id)
-            
-            # Gather results from all processes
             gathered_predictions = self.accelerator.gather(padded_predictions)
             gathered_references = self.accelerator.gather_for_metrics(references)
             
@@ -123,13 +122,11 @@ class ModelEvaluator:
 
             self._process_and_save_results(test_dataset.data, all_predictions, all_references)
 
+        logger.info("--- Phase 4 Completed Successfully ---")
+
     def _process_and_save_results(self, test_data, predicted_token_ids, reference_texts):
-        # (This part is similar to before, but runs only on the main process)
         logger.info("Decoding predictions and saving detailed results to file...")
-
-        # Unwrap the model to access custom attributes like .tokenizer
         unwrapped_model = self.accelerator.unwrap_model(self.model)
-
         str_predictions = unwrapped_model.tokenizer.base_tokenizer.batch_decode(predicted_token_ids, skip_special_tokens=True)
         str_references = [ref.replace(" <eos>", "") for ref in reference_texts]
 
@@ -153,7 +150,6 @@ class ModelEvaluator:
         self._compute_summary_metrics(str_predictions, str_references)
 
     def _decode_semantic_string(self, semantic_str: str) -> List[str]:
-        # (Same as before)
         numerical_ids = [int(token[4:-1]) for token in semantic_str.split() if token.startswith("<id_") and token.endswith(">")]
         chunk_size = self.config.rqvae.levels
         reconstructed_song_ids = []
@@ -163,7 +159,6 @@ class ModelEvaluator:
         return reconstructed_song_ids
 
     def _compute_summary_metrics(self, predictions: list, references: list):
-        # (Same as before)
         rouge_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'rouge'))
         bleu_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'bleu'))
         rouge_results = rouge_metric.compute(predictions=predictions, references=references)
@@ -185,7 +180,6 @@ class ModelEvaluator:
         recall = intersection / len(ref_songs) if ref_songs else 0
         return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
-    # Helper methods to load necessary data (same as before)
     def _load_model(self): return TIGERModel.from_pretrained(os.path.join(self.config.model_dir, "tiger_final"))
     def _load_song_info(self): 
         import csv
