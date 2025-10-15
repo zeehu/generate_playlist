@@ -147,9 +147,16 @@ class ModelEvaluator:
 
     def _compute_summary_metrics(self, predictions: list, references: list):
         rouge_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'rouge'))
-        bleu_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'bleu'))
         rouge_results = rouge_metric.compute(predictions=predictions, references=references)
-        bleu_results = bleu_metric.compute(predictions=predictions, references=[[r] for r in references])
+
+        # Try to load BLEU, but don't fail if it's not there
+        bleu_results = {"bleu": 0.0}
+        try:
+            bleu_metric = evaluate.load(os.path.join(self.config.eval.local_metrics_path, 'bleu'))
+            bleu_results = bleu_metric.compute(predictions=predictions, references=[[r] for r in references])
+        except FileNotFoundError:
+            logger.warning("BLEU metric script not found. Skipping BLEU score calculation.")
+
         total_f1 = np.mean([self._calculate_f1(p, r) for p, r in zip(predictions, references)])
         print("\n" + "="*50)
         print("  TIGER Model Evaluation Summary")
