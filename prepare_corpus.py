@@ -95,10 +95,11 @@ class CorpusBuilder:
             tags = info.get('tag_list', '')
             input_text = f"歌单标题：{title} | 歌单标签：{tags}"
 
-            sorted_songs = sorted(songs)
+            # CRITICAL: Remove duplicates, then sort songs by ID to ensure canonical order.
+            unique_songs = sorted(list(set(songs)))
             
             semantic_tokens = []
-            for song_id in sorted_songs:
+            for song_id in unique_songs:
                 if song_id in semantic_id_map:
                     tokens = [f"<id_{sid}>" for sid in semantic_id_map[song_id]]
                     semantic_tokens.extend(tokens)

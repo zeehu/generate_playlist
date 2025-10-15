@@ -123,8 +123,13 @@ class ModelEvaluator:
         output_file_path = os.path.join(self.config.output_dir, "evaluation_results.txt")
         with open(output_file_path, 'w', encoding='utf-8') as f:
             for i, item in enumerate(tqdm(test_data, desc="Processing and Saving Results")):
+                # Decode and de-duplicate predictions
                 predicted_song_ids = self._decode_semantic_string(str_predictions[i])
+                predicted_song_ids = list(dict.fromkeys(predicted_song_ids)) # De-duplicate while preserving order
+
+                # Decode and de-duplicate references for clean comparison
                 reference_song_ids = self._decode_semantic_string(str_references[i])
+                reference_song_ids = list(dict.fromkeys(reference_song_ids)) # De-duplicate while preserving order
 
                 f.write("="*80 + "\n")
                 f.write(f"Playlist ID: {item['glid']}\n")
