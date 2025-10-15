@@ -1,8 +1,11 @@
-"""
-Phase 4 (Final): Evaluate the TIGER model with a focus on semantic ID accuracy.
 
-This script calculates metrics (ROUGE, BLEU) on the generated semantic ID sequences
-and produces a detailed side-by-side comparison file showing both songs and their IDs.
+"""
+Phase 4 (Final): Evaluate the TIGER model with comprehensive, user-defined metrics.
+
+This script:
+1. Calculates metrics (ROUGE, BLEU) on the raw semantic ID sequences.
+2. Calculates a cluster-aware F1-score by expanding predicted clusters.
+3. Produces a detailed side-by-side comparison file showing songs and their semantic IDs.
 """
 import os
 import sys
@@ -60,7 +63,6 @@ class ModelEvaluator:
         self.accelerator = Accelerator()
         self.device = self.accelerator.device
         self.model = self._load_model()
-        # Create both mapping tables for efficient lookups
         self.song_to_sem_id_map, self.sem_id_to_songs_map = self._create_mappings()
         self.song_info_map = self._load_song_info()
 
@@ -110,12 +112,10 @@ class ModelEvaluator:
         output_file_path = os.path.join(self.config.output_dir, "evaluation_results.txt")
         with open(output_file_path, 'w', encoding='utf-8') as f:
             for i, item in enumerate(tqdm(test_data, desc="Processing and Saving Results")):
-                # 1. Ground Truth side: Decode semantic string to song IDs
                 gt_sem_ids = self._get_semantic_tuples(str_references[i])
-                gt_song_ids = [self._get_song_from_sem_id(t) for t in gt_sem_ids]
+                gt_song_ids = [self.sem_id_to_songs_map.get(t, [None])[0] for t in gt_sem_ids]
                 gt_song_ids = [sid for sid in gt_song_ids if sid is not None]
 
-                # 2. Prediction side: Decode semantic string and sample one song per cluster
                 pred_sem_ids = self._get_semantic_tuples(str_predictions[i])
                 pred_song_ids = [random.choice(self.sem_id_to_songs_map.get(sem_id, ["N/A"])) for sem_id in pred_sem_ids]
 
@@ -151,21 +151,45 @@ class ModelEvaluator:
         chunk_size = self.config.rqvae.levels
         return list(dict.fromkeys([tuple(numerical_ids[i:i+chunk_size]) for i in range(0, len(numerical_ids) - chunk_size + 1, chunk_size)]))
 
-    def _get_song_from_sem_id(self, sem_id_tuple: Tuple) -> str:
-        return self.sem_id_to_songs_map.get(sem_id_tuple, [None])[0]
-
     def _compute_summary_metrics(self, predictions: list, references: list):
+        # Metric 1 & 2: ROUGE and BLEU on semantic ID strings
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
         rouge_l_f1 = np.mean([scorer.score(ref, pred)['rougeL'].fmeasure for ref, pred in zip(references, predictions)])
         chencherry = SmoothingFunction()
         bleu_scores = [sentence_bleu([ref.split()], pred.split(), smoothing_function=chencherry.method1) for ref, pred in zip(references, predictions)]
         avg_bleu = np.mean(bleu_scores)
+
+        # Metric 3: Cluster-Aware Song F1-Score
+        f1_scores = []
+        for pred_str, ref_str in zip(predictions, references):
+            ref_sem_ids = self._get_semantic_tuples(ref_str)
+            ref_song_ids = set([self.sem_id_to_songs_map.get(t, [None])[0] for t in ref_sem_ids if t in self.sem_id_to_songs_map])
+
+            pred_sem_ids = self._get_semantic_tuples(pred_str)
+            predicted_song_ids = set()
+            for sem_id_tuple in pred_sem_ids:
+                predicted_song_ids.update(self.sem_id_to_songs_map.get(sem_id_tuple, []))
+            
+            f1 = self._calculate_f1_from_sets(predicted_song_ids, ref_song_ids)
+            f1_scores.append(f1)
+        avg_f1 = np.mean(f1_scores)
+
         print("\n" + "="*60)
-        print("  TIGER Model Evaluation Summary (Semantic ID based)")
+        print("  TIGER Model Evaluation Summary")
         print("="*60)
-        print(f"  ROUGE-L (F1-Score on Semantic IDs): {rouge_l_f1:.4f}")
-        print(f"  BLEU-4 Score on Semantic IDs:     {avg_bleu:.4f}")
+        print("  [Semantic ID Sequence Metrics]")
+        print(f"  ROUGE-L (F1-Score): {rouge_l_f1:.4f}")
+        print(f"  BLEU-4 Score:       {avg_bleu:.4f}")
+        print("\n  [Expanded Song Set Metrics]")
+        print(f"  Avg. Song F1-Score: {avg_f1:.4f}")
         print("="*60)
+
+    def _calculate_f1_from_sets(self, pred_set, ref_set):
+        if not ref_set: return 0
+        intersection = len(pred_set.intersection(ref_set))
+        precision = intersection / len(pred_set) if pred_set else 0
+        recall = intersection / len(ref_set) if ref_set else 0
+        return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
     def _load_model(self): return TIGERModel.from_pretrained(os.path.join(self.config.model_dir, "tiger_final"))
     def _load_song_info(self): 
@@ -179,7 +203,7 @@ class ModelEvaluator:
                     if len(row) >= 3: mapping[row[0]] = {"name": row[1], "singer": row[2]}
         except FileNotFoundError: logger.warning("Song info file not found.")
         return mapping
-    def _create_mappings(self) -> Tuple[Dict, Dict]:
+    def _create_mappings(self) -> Tuple[Dict[str, Tuple], Dict[Tuple, List[str]]]:
         song_to_sem_id = {}
         sem_id_to_songs = defaultdict(list)
         try:
@@ -193,7 +217,7 @@ class ModelEvaluator:
         except FileNotFoundError: 
             logger.error("FATAL: song_semantic_ids.jsonl not found.")
             sys.exit(1)
-        return song_to_sem_id, sem_id_to_songs
+        return dict(song_to_sem_id), dict(sem_id_to_songs)
 
 if __name__ == "__main__":
     config = Config()
