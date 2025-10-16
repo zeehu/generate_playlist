@@ -110,6 +110,8 @@ class TIGERModel(nn.Module):
         
         # Store vocab size
         self.vocab_size = vocab_size
+
+        self.base_model_path = base_model
         
     def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor = None,
                 labels: torch.Tensor = None, **kwargs):
