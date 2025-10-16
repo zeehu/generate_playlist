@@ -116,7 +116,11 @@ class TigerTrainer:
         transformers_logger.addHandler(file_handler)
         # ---------------------------------------------
 
-        # 5. Start Training
+        # 5. Enable torch.compile for a significant speedup (for PyTorch 2.x)
+        logger.info("Enabling torch.compile for model optimization...")
+        model.model = torch.compile(model.model)
+
+        # 6. Start Training
         logger.info("Starting training... This may take a while.")
         trainer.train()
 

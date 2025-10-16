@@ -50,12 +50,12 @@ class PlaylistTIGERConfig:
     
     # Training parameters
     num_train_epochs: int = 5
-    per_device_train_batch_size: int = 32
+    per_device_train_batch_size: int = 64
     per_device_eval_batch_size: int = 8
     learning_rate: float = 5e-4
     warmup_steps: int = 500
     weight_decay: float = 0.01
-    gradient_accumulation_steps: int = 4
+    gradient_accumulation_steps: int = 2
     fp16: bool = True
 
 
