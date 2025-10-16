@@ -49,13 +49,13 @@ class PlaylistTIGERConfig:
     max_target_length: int = 256 # Max length for song sequence (e.g., 128 songs * 2 tokens/song)
     
     # Training parameters
-    num_train_epochs: int = 10
+    num_train_epochs: int = 5
     per_device_train_batch_size: int = 32
     per_device_eval_batch_size: int = 8
     learning_rate: float = 5e-4
     warmup_steps: int = 500
     weight_decay: float = 0.01
-    gradient_accumulation_steps: int = 1
+    gradient_accumulation_steps: int = 4
     fp16: bool = True
 
 
