@@ -153,6 +153,7 @@ class TigerTrainer:
             fp16=self.config.tiger.fp16,
             max_grad_norm=1.0, # Add gradient clipping to prevent exploding gradients
             gradient_checkpointing=True, # Saves memory
+            gradient_checkpointing_kwargs={"use_reentrant": False}, # Explicitly set for future compatibility
             dataloader_num_workers=self.config.num_workers,
 
             # Evaluation and saving strategy
