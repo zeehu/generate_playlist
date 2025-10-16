@@ -85,6 +85,9 @@ class TigerTrainer:
             base_model=self.config.tiger.model_name,
             vocab_size=self.config.rqvae.vocab_size
         )
+        # Explicitly disable cache for gradient checkpointing compatibility
+        model.model.config.use_cache = False
+
         # We then get the tokenizer from the model instance to use for data processing.
         tokenizer = model.tokenizer
 
