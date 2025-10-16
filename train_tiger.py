@@ -151,6 +151,7 @@ class TigerTrainer:
             
             # Performance and multi-GPU optimizations
             fp16=self.config.tiger.fp16,
+            max_grad_norm=1.0, # Add gradient clipping to prevent exploding gradients
             gradient_checkpointing=True, # Saves memory
             dataloader_num_workers=self.config.num_workers,
 
